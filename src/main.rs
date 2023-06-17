@@ -125,8 +125,6 @@ impl eframe::App for MyApp {
 
 fn funcManager(function : String) -> Result<String, Box<dyn std::error::Error>> {
 
-    let vector = do_the_math(function);
-
     let path = "plot.png";
     let root = BitMapBackend::new(path, (400, 375)).into_drawing_area();
     root.fill(&WHITE)?;
@@ -135,7 +133,7 @@ fn funcManager(function : String) -> Result<String, Box<dyn std::error::Error>> 
         .margin(10)
         .x_label_area_size(20)
         .y_label_area_size(20)
-        .build_cartesian_2d(0f32..10f32, 0f32..10f32)?;
+        .build_cartesian_2d(0f32..20f32, -10f32..10f32)?;
 
     chart
         .configure_mesh()
@@ -144,7 +142,7 @@ fn funcManager(function : String) -> Result<String, Box<dyn std::error::Error>> 
         .draw()?;
 
     chart.draw_series(LineSeries::new(
-        vec![(1.0, 1.0), (2.0, 5.0), (3.0, 4.0), (4.0, 8.0), (5.0, 6.5)],
+        do_the_math(function),
         &RED,
     ))?;
 
@@ -164,11 +162,13 @@ fn draw_func(path: &std::path::Path) -> Result<egui::ColorImage, image::ImageErr
     ))
 }
 
-fn do_the_math(function : String) -> Vec<(f64, f64)> {
+fn do_the_math(function : String) -> Vec<(f32, f32)> {
     let mut cur_str = "".to_owned();
     let mut val : Vec<f64> = vec![];
     let mut signs : Vec<char> = vec![];
+    let mut x_places : Vec<i32> = vec![];
     let mut x = 0.0;
+    let mut i = 0;
     for chr in function.chars(){
         println!("{}", chr);
         match chr as u32 {
@@ -177,15 +177,74 @@ fn do_the_math(function : String) -> Vec<(f64, f64)> {
                 signs.push(chr);
                 cur_str = "".to_owned();
             },
-            48..=57 => cur_str += chr.to_string().as_str(),
-            120 => cur_str += &x.to_string().as_str(),
+            48..=57 => {
+                cur_str += chr.to_string().as_str(); 
+                i+=1;}
+            120 => {
+                cur_str += &x.to_string().as_str();
+                x_places.push(i);
+                i+=1;
+            }
             _ => println!("what the fuck is this shit ? : {}, char = {}", chr, chr as u32)
         } if chr == function.chars().last().unwrap(){
             val.push(get_value(cur_str.parse()));
-        }  
+        }
     }
-    println!("{:?}, {:?}", val, signs);
-    vec![(0.0, 0.0), (1.0, 0.0), (2.0, 0.0), (3.0, 0.0), (4.0, 0.0), (5.0, 0.0), (6.0, 0.0), (7.0, 0.0), (8.0, 0.0), (9.0, 0.0), (10.0, 0.0)]
+    println!("{:?}, {:?}, {:?}", val, signs, x_places);
+    let mut res : Vec<(f32, f32)> = vec![];
+    let backup_val = val;
+    let backup_sign = signs;
+    for i in 0..11 {
+        signs = backup_sign.clone();
+        val = backup_val.clone();
+        for iter in 0..x_places.len() {
+            let x_index : usize = x_places[iter] as usize;
+            val[x_index] = i as f64;
+        }
+        for iter in 0..signs.len() {
+            if signs[iter] == '*' || signs[iter] == '/' {
+                if signs[iter] == '*' {
+                    println!("*{:?}", val);
+                    val[iter] *= val[iter+1];
+                    println!("*{:?}", val);
+                    val.remove(iter+1);
+                    println!("*{:?}", val);
+                    signs.remove(iter);
+                    println!("*{:?}", val);
+                }
+            } else {
+                println!("/{:?}", val);
+                val[iter] /= val[iter+1];
+                println!("/{:?}", val);
+                val.remove(iter+1);
+                println!("/{:?}", val);
+                signs.remove(iter);
+                println!("/{:?}", val);
+            }
+            
+        }
+        for iter in 0..signs.len() {
+            if signs[iter] == '+' || signs[iter] == '-' {
+                if signs[iter] == '+' {
+                    val[iter] += val[iter+1];
+                    val.remove(iter+1);
+                    signs.remove(iter);
+                    println!("+{:?}", val);
+                }
+            } else {
+                val[iter] -= val[iter+1];
+                val.remove(iter+1);
+                signs.remove(iter);
+                println!("-{:?}", val);
+            }
+        }
+        
+        let r : f32 = 0.0;
+
+        let tuple = (i as f32, r);
+        res.push(tuple);
+    }
+    return res;
 }
 
 fn get_value<T, E>(res : Result<T, E>) -> T {
