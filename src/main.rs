@@ -10,14 +10,14 @@ use base64;
 use std::io::Read;
 use image::{GenericImageView, ImageBuffer, Rgba};
 use egui::epaint::textures::TextureManager;
-use egui::widgets::{TextEdit};
+use egui::widgets::{TextEdit, DragValue};
 use egui_extras::RetainedImage;
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 fn main() -> Result<(), eframe::Error> {
-    funcManager("".to_owned());
+    funcManager("".to_owned(), (0, 20));
     let options = eframe::NativeOptions {
-        initial_window_size: Some(egui::vec2(500.0, 400.0)),
+        initial_window_size: Some(egui::vec2(600.0, 400.0)),
         ..Default::default()
     };
     eframe::run_native(
@@ -39,7 +39,9 @@ struct MyApp {
     allowed_to_close: bool,
     show_confirmation_dialog: bool,
     image : RetainedImage,
-    function: String
+    function: String,
+    low : i32,
+    high : i32
 }
 
 
@@ -51,7 +53,9 @@ impl Default for MyApp {
                 "plot.png",
                 get_value(draw_func(Path::new("/home/cyansky/Documents/rust/FunctionHandler/plot.png"))),
             ),
-            function: String::from("2*x-1")
+            function: String::from("2*x-1"),
+            low: 0,
+            high : 0,
         }
     }
 }
@@ -72,19 +76,29 @@ impl eframe::App for MyApp {
 
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("lets try something");
-            ui.heading("This is an image:");
-            ui.horizontal(|ui| {});
+            ui.heading("cyan function calculator");
+            ui.heading("graphic representation:");
             self.image.show(ui);
             egui::SidePanel::right("Section 1").show(ctx, |ui| {
                 ui.horizontal(|ui|{
                     ui.label("y = ");
                     ui.add(TextEdit::singleline(&mut self.function).hint_text("2x-1"));
                 });
+                ui.horizontal(|ui|{
+                    ui.label("min x:");
+                    ui.add(DragValue::new(&mut self.low).speed(1));
+                    ui.label("max x:");
+                    ui.add(DragValue::new(&mut self.high).speed(1));
+
+                });
                 if ui.button("submit").clicked() {
                     println!("fn sub");
-                    funcManager(self.function.clone());
+                    funcManager(self.function.clone(), (self.low, self.high));
                     draw_func(Path::new("/home/cyansky/Documents/rust/FunctionHandler/plot.png"));
+                    self.image = RetainedImage::from_color_image(
+                        "plot.png",
+                        get_value(draw_func(Path::new("/home/cyansky/Documents/rust/FunctionHandler/plot.png"))),
+                    )
                 }
             });
             
@@ -123,7 +137,18 @@ impl eframe::App for MyApp {
     }
 }
 
-fn funcManager(function : String) -> Result<String, Box<dyn std::error::Error>> {
+fn funcManager(function : String, domaine_def : (i32, i32)) -> Result<String, Box<dyn std::error::Error>> {
+
+    let line = do_the_math(function, domaine_def);
+    let mut min:f32 = 0.0;
+    let mut max:f32 = 0.0;
+    for i in &line{
+        if i.1 > max {max = i.1};
+        if i.1 < min {min = i.1};
+    }
+    min-=1.0;
+    max+=1.0;
+
 
     let path = "plot.png";
     let root = BitMapBackend::new(path, (400, 375)).into_drawing_area();
@@ -133,7 +158,7 @@ fn funcManager(function : String) -> Result<String, Box<dyn std::error::Error>> 
         .margin(10)
         .x_label_area_size(20)
         .y_label_area_size(20)
-        .build_cartesian_2d(0f32..20f32, -10f32..10f32)?;
+        .build_cartesian_2d((domaine_def.0 as f32)..(domaine_def.1 as f32), min..max)?;
 
     chart
         .configure_mesh()
@@ -142,7 +167,7 @@ fn funcManager(function : String) -> Result<String, Box<dyn std::error::Error>> 
         .draw()?;
 
     chart.draw_series(LineSeries::new(
-        do_the_math(function),
+        line,
         &RED,
     ))?;
 
@@ -162,7 +187,7 @@ fn draw_func(path: &std::path::Path) -> Result<egui::ColorImage, image::ImageErr
     ))
 }
 
-fn do_the_math(function : String) -> Vec<(f32, f32)> {
+fn do_the_math(function : String, domaine_def : (i32, i32)) -> Vec<(f32, f32)> {
     let mut cur_str = "".to_owned();
     let mut val : Vec<f64> = vec![];
     let mut signs : Vec<char> = vec![];
@@ -180,6 +205,9 @@ fn do_the_math(function : String) -> Vec<(f32, f32)> {
             48..=57 => {
                 cur_str += chr.to_string().as_str(); 
                 i+=1;}
+            94 => {val.push(get_value(cur_str.parse()));
+                signs.push(chr);
+                cur_str = "".to_owned();}
             120 => {
                 cur_str += &x.to_string().as_str();
                 x_places.push(i);
@@ -195,7 +223,7 @@ fn do_the_math(function : String) -> Vec<(f32, f32)> {
     let backup_sign = signs.clone();
     let mut equilibre:i32 = 1;
     let mut iter = 0;
-    for i in 0..=20 {
+    for i in domaine_def.0..=domaine_def.1 {
         signs = backup_sign.clone();
         val = backup_val.clone();
         for iter in 0..x_places.len() {
@@ -204,6 +232,19 @@ fn do_the_math(function : String) -> Vec<(f32, f32)> {
         }
         println!("{:?}, {:?}, {:?}", &val, &signs, x_places);
         equilibre = 1;
+        while iter < signs.len() {
+            println!("{}, {}", signs[iter], signs[iter] == '*' || signs[iter] == '/');
+            if signs[iter] == '^' {
+                for i_ in 1..(val[iter + equilibre as usize] as i32) {
+                    val[iter + equilibre as usize -1] *= val[iter + equilibre as usize -1];
+                }
+                val.remove(iter+equilibre as usize);
+                equilibre-=1;
+                println!("{:?}, {:?}, {:?} */", &val, &signs, x_places);
+            } 
+            iter +=1;
+        }
+        iter =0;
         while iter < signs.len() {
             println!("{}, {}", signs[iter], signs[iter] == '*' || signs[iter] == '/');
             if signs[iter] == '*' || signs[iter] == '/' {
