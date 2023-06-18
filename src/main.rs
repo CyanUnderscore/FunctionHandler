@@ -51,7 +51,7 @@ impl Default for MyApp {
                 "plot.png",
                 get_value(draw_func(Path::new("/home/cyansky/Documents/rust/FunctionHandler/plot.png"))),
             ),
-            function: String::from("2x-1")
+            function: String::from("2*x-1")
         }
     }
 }
@@ -190,60 +190,65 @@ fn do_the_math(function : String) -> Vec<(f32, f32)> {
             val.push(get_value(cur_str.parse()));
         }
     }
-    println!("{:?}, {:?}, {:?}", val, signs, x_places);
     let mut res : Vec<(f32, f32)> = vec![];
-    let backup_val = val;
-    let backup_sign = signs;
-    for i in 0..11 {
+    let backup_val = val.clone();
+    let backup_sign = signs.clone();
+    let mut equilibre:i32 = 1;
+    let mut iter = 0;
+    for i in 0..=20 {
         signs = backup_sign.clone();
         val = backup_val.clone();
         for iter in 0..x_places.len() {
             let x_index : usize = x_places[iter] as usize;
             val[x_index] = i as f64;
         }
-        for iter in 0..signs.len() {
+        println!("{:?}, {:?}, {:?}", &val, &signs, x_places);
+        equilibre = 1;
+        while iter < signs.len() {
+            println!("{}, {}", signs[iter], signs[iter] == '*' || signs[iter] == '/');
             if signs[iter] == '*' || signs[iter] == '/' {
                 if signs[iter] == '*' {
-                    println!("*{:?}", val);
-                    val[iter] *= val[iter+1];
-                    println!("*{:?}", val);
-                    val.remove(iter+1);
-                    println!("*{:?}", val);
-                    signs.remove(iter);
-                    println!("*{:?}", val);
+                    val[iter + equilibre as usize -1] *= val[iter + equilibre as usize];
+                    val.remove(iter+equilibre as usize);
+                    equilibre-=1;
+                    
+                } else if signs[iter] == '/' {
+                    val[iter + equilibre as usize -1] /= val[iter + equilibre as usize];
+                        val.remove(iter+equilibre as usize);
+                        equilibre-=1;
                 }
-            } else {
-                println!("/{:?}", val);
-                val[iter] /= val[iter+1];
-                println!("/{:?}", val);
-                val.remove(iter+1);
-                println!("/{:?}", val);
-                signs.remove(iter);
-                println!("/{:?}", val);
-            }
-            
+                println!("{:?}, {:?}, {:?} */", &val, &signs, x_places);
+            } 
+            iter +=1;
         }
-        for iter in 0..signs.len() {
+        iter = 0;
+        while iter < signs.len() {
             if signs[iter] == '+' || signs[iter] == '-' {
                 if signs[iter] == '+' {
-                    val[iter] += val[iter+1];
-                    val.remove(iter+1);
-                    signs.remove(iter);
-                    println!("+{:?}", val);
+                    val[0] += val[1];
+                    val.remove(1);
+                    equilibre-=1;
+                } else if signs[iter] == '-' {
+                    val[0] -= val[1];
+                    val.remove(1);
+                    equilibre-=1;
                 }
-            } else {
-                val[iter] -= val[iter+1];
-                val.remove(iter+1);
-                signs.remove(iter);
-                println!("-{:?}", val);
+                println!("{:?}, {:?}, {:?} +-", &val, &signs, x_places);
             }
+            iter+=1;
+            
         }
-        
-        let r : f32 = 0.0;
-
-        let tuple = (i as f32, r);
-        res.push(tuple);
+        iter = 0;
+        println!("result pour x = {} : {:?}",i, val);
+        if val.len() > 0 {
+            let tuple = (i as f32, val[0] as f32);
+            res.push(tuple);
+        } else {
+            let tuple = (i as f32, 0.0 as f32);
+            res.push(tuple);
+        }
     }
+    println!("{:?}", res);
     return res;
 }
 
