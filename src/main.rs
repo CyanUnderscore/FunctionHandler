@@ -1,15 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
-use eframe::epaint::ahash::{HashMap, RandomState};
-use eframe::epaint::{ColorImage, TextureId};
 use eframe::{egui, Error};
 use plotters::prelude::*;
 use std::path::Path;
-use std::fs::File;
-use base64;
-use std::io::Read;
-use image::{GenericImageView, ImageBuffer, Rgba};
-use egui::epaint::textures::TextureManager;
 use egui::widgets::{TextEdit, DragValue};
 use egui_extras::RetainedImage;
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -55,7 +48,7 @@ impl Default for MyApp {
             ),
             function: String::from("2*x-1"),
             low: 0,
-            high : 0,
+            high : 20,
         }
     }
 }
@@ -188,6 +181,9 @@ fn draw_func(path: &std::path::Path) -> Result<egui::ColorImage, image::ImageErr
 }
 
 fn do_the_math(function : String, domaine_def : (i32, i32)) -> Vec<(f32, f32)> {
+
+    //slicing the function between values and calcul signs
+
     let mut cur_str = "".to_owned();
     let mut val : Vec<f64> = vec![];
     let mut signs : Vec<char> = vec![];
@@ -218,6 +214,9 @@ fn do_the_math(function : String, domaine_def : (i32, i32)) -> Vec<(f32, f32)> {
             val.push(get_value(cur_str.parse()));
         }
     }
+
+    // once the function is sliced its processed
+
     let mut res : Vec<(f32, f32)> = vec![];
     let backup_val = val.clone();
     let backup_sign = signs.clone();
@@ -281,9 +280,14 @@ fn do_the_math(function : String, domaine_def : (i32, i32)) -> Vec<(f32, f32)> {
         }
         iter = 0;
         println!("result pour x = {} : {:?}",i, val);
+        
         if val.len() > 0 {
-            let tuple = (i as f32, val[0] as f32);
-            res.push(tuple);
+            if (val[0] as f64) == std::f64::INFINITY || (val[0] as f64) == std::f64::NEG_INFINITY{
+                println!("val for {} is out of scope", i);
+            } else {
+                let tuple = (i as f32, val[0] as f32);
+                res.push(tuple);
+            }
         } else {
             let tuple = (i as f32, 0.0 as f32);
             res.push(tuple);
