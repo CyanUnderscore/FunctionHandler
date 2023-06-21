@@ -217,12 +217,15 @@ fn do_the_math(function : String, domaine_def : (i32, i32)) -> Vec<(f32, f32)> {
 
     // once the function is sliced its processed
 
+    let mut equilibre_scaler : Vec<usize> = vec![];
     let mut res : Vec<(f32, f32)> = vec![];
     let backup_val = val.clone();
     let backup_sign = signs.clone();
     let mut equilibre:i32 = 1;
+    let mut current_adder: i32 = 0;
     let mut iter = 0;
-    for i in domaine_def.0..=domaine_def.1 {
+    let mut val_len = val.len();
+    for i in (domaine_def.0 * 100)..=(domaine_def.1 * 100) {
         signs = backup_sign.clone();
         val = backup_val.clone();
         for iter in 0..x_places.len() {
@@ -232,32 +235,59 @@ fn do_the_math(function : String, domaine_def : (i32, i32)) -> Vec<(f32, f32)> {
         println!("{:?}, {:?}, {:?}", &val, &signs, x_places);
         equilibre = 1;
         while iter < signs.len() {
-            println!("{}, {}", signs[iter], signs[iter] == '*' || signs[iter] == '/');
+            println!("{}, {}", signs[iter], signs[iter] == '^');
             if signs[iter] == '^' {
-                for i_ in 1..(val[iter + equilibre as usize] as i32) {
-                    val[iter + equilibre as usize -1] *= val[iter + equilibre as usize -1];
+                for i in equilibre_scaler.clone().into_iter(){
+                    if i < iter {current_adder-=1;}
                 }
+                for i_ in 1..(val[iter + equilibre as usize +current_adder as usize] as i32) {
+                    val[iter + equilibre as usize + current_adder as usize -1] *= val[iter + equilibre as usize -1];
+                }
+                equilibre_scaler.push(iter);
                 val.remove(iter+equilibre as usize);
+                val_len = val.len();
                 equilibre-=1;
                 println!("{:?}, {:?}, {:?} */", &val, &signs, x_places);
             } 
             iter +=1;
+            current_adder = 0;
         }
         iter =0;
         while iter < signs.len() {
             println!("{}, {}", signs[iter], signs[iter] == '*' || signs[iter] == '/');
             if signs[iter] == '*' || signs[iter] == '/' {
+                println!("before : {:?}, {:?}, {:?} */", &val, &signs, x_places);
+                for i in equilibre_scaler.clone().into_iter(){
+                    if i < iter {current_adder-=1;}
+                }
                 if signs[iter] == '*' {
-                    val[iter + equilibre as usize -1] *= val[iter + equilibre as usize];
-                    val.remove(iter+equilibre as usize);
+                    if (iter as i32 + equilibre + current_adder -1) < 0 {
+                        val[0] *= val[1];
+                        val.remove(1);
+                    } else if (iter as i32 + equilibre + current_adder -1) < (val_len -1) as i32 {
+                        val[val_len-1] *= val[val_len-2];
+                        val.remove(val_len -1);
+                    } else {
+                        val[iter + equilibre as usize + current_adder as usize -1] *= val[iter + current_adder as usize + equilibre as usize];
+                    }
+                    val_len = val.len();
                     equilibre-=1;
                     
                 } else if signs[iter] == '/' {
-                    val[iter + equilibre as usize -1] /= val[iter + equilibre as usize];
-                        val.remove(iter+equilibre as usize);
-                        equilibre-=1;
+                    if (iter as i32 + equilibre + current_adder -1) < 0 {
+                        val[0] /= val[1];
+                        val.remove(1);
+                    } else if (iter as i32 + equilibre + current_adder -1) < (val_len -1) as i32 {
+                        val[val_len-1] /= val[val_len-2];
+                        val.remove(val_len -1);
+                    } else {
+                        val[iter + equilibre as usize + current_adder as usize -1] /= val[iter + current_adder as usize + equilibre as usize];
+                    }
+                    val_len = val.len();
+                    equilibre-=1;
+                    
                 }
-                println!("{:?}, {:?}, {:?} */", &val, &signs, x_places);
+                println!("after : {:?}, {:?}, {:?} */", &val, &signs, x_places);
             } 
             iter +=1;
         }
@@ -267,10 +297,12 @@ fn do_the_math(function : String, domaine_def : (i32, i32)) -> Vec<(f32, f32)> {
                 if signs[iter] == '+' {
                     val[0] += val[1];
                     val.remove(1);
+                    val_len = val.len();
                     equilibre-=1;
                 } else if signs[iter] == '-' {
                     val[0] -= val[1];
                     val.remove(1);
+                    val_len = val.len();
                     equilibre-=1;
                 }
                 println!("{:?}, {:?}, {:?} +-", &val, &signs, x_places);
@@ -285,11 +317,11 @@ fn do_the_math(function : String, domaine_def : (i32, i32)) -> Vec<(f32, f32)> {
             if (val[0] as f64) == std::f64::INFINITY || (val[0] as f64) == std::f64::NEG_INFINITY{
                 println!("val for {} is out of scope", i);
             } else {
-                let tuple = (i as f32, val[0] as f32);
+                let tuple = ((i as f32 /100.0) as f32, val[0] as f32);
                 res.push(tuple);
             }
         } else {
-            let tuple = (i as f32, 0.0 as f32);
+            let tuple = ((i as f32 /100.0) as f32, 0.0 as f32);
             res.push(tuple);
         }
     }
