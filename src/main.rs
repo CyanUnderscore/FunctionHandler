@@ -44,7 +44,7 @@ impl Default for MyApp {
             show_confirmation_dialog: false, 
             image: RetainedImage::from_color_image(
                 "plot.png",
-                draw_func(Path::new("/home/cyansky/Documents/rust/FunctionHandler/plot.png")).unwrap(),
+                draw_func(Path::new("plot.png")).unwrap(),
             ),
             function: String::from("2*x-1"),
             low: 0,
@@ -90,7 +90,7 @@ impl eframe::App for MyApp {
                     draw_func(Path::new("/home/cyansky/Documents/rust/FunctionHandler/plot.png"));
                     self.image = RetainedImage::from_color_image(
                         "plot.png",
-                        draw_func(Path::new("/home/cyansky/Documents/rust/FunctionHandler/plot.png")).unwrap(),
+                        draw_func(Path::new("/home/cyansky/Documents/FunctionHandler/plot.png")).unwrap(),
                     )
                 }
             });
