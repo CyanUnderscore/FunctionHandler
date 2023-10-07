@@ -44,7 +44,7 @@ impl Default for MyApp {
             show_confirmation_dialog: false, 
             image: RetainedImage::from_color_image(
                 "plot.png",
-                get_value(draw_func(Path::new("/home/cyansky/Documents/rust/FunctionHandler/plot.png"))),
+                draw_func(Path::new("/home/cyansky/Documents/rust/FunctionHandler/plot.png")).unwrap(),
             ),
             function: String::from("2*x-1"),
             low: 0,
@@ -90,7 +90,7 @@ impl eframe::App for MyApp {
                     draw_func(Path::new("/home/cyansky/Documents/rust/FunctionHandler/plot.png"));
                     self.image = RetainedImage::from_color_image(
                         "plot.png",
-                        get_value(draw_func(Path::new("/home/cyansky/Documents/rust/FunctionHandler/plot.png"))),
+                        draw_func(Path::new("/home/cyansky/Documents/rust/FunctionHandler/plot.png")).unwrap(),
                     )
                 }
             });
@@ -194,14 +194,14 @@ fn do_the_math(function : String, domaine_def : (i32, i32)) -> Vec<(f32, f32)> {
         println!("{}", chr);
         match chr as u32 {
             42..=47 => {
-                val.push(get_value(cur_str.parse()));
+                val.push(cur_str.parse().unwrap());
                 signs.push(chr);
                 cur_str = "".to_owned();
             },
             48..=57 => {
                 cur_str += chr.to_string().as_str(); 
                 i+=1;}
-            94 => {val.push(get_value(cur_str.parse()));
+            94 => {val.push(cur_str.parse().unwrap());
                 signs.push(chr);
                 cur_str = "".to_owned();}
             120 => {
@@ -211,7 +211,7 @@ fn do_the_math(function : String, domaine_def : (i32, i32)) -> Vec<(f32, f32)> {
             }
             _ => println!("what the fuck is this shit ? : {}, char = {}", chr, chr as u32)
         } if chr == function.chars().last().unwrap(){
-            val.push(get_value(cur_str.parse()));
+            val.push(cur_str.parse().unwrap());
         }
     }
 
@@ -297,9 +297,3 @@ fn do_the_math(function : String, domaine_def : (i32, i32)) -> Vec<(f32, f32)> {
     return res;
 }
 
-fn get_value<T, E>(res : Result<T, E>) -> T {
-    match res {
-        Ok(r) => return r,
-        Err(e) => panic!("error")
-    }
-}
