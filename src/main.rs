@@ -2,11 +2,12 @@
 
 use eframe::{egui, Error};
 use plotters::prelude::*;
+use core::panic;
 use std::path::Path;
 use egui::widgets::{TextEdit, DragValue};
 use egui_extras::RetainedImage;
 pub type Result<T, E = Error> = std::result::Result<T, E>;
-
+use FunctionHandler::expr;
 fn main() -> Result<(), eframe::Error> {
     funcManager("".to_owned(), (0, 20));
     let options = eframe::NativeOptions {
@@ -44,7 +45,7 @@ impl Default for MyApp {
             show_confirmation_dialog: false, 
             image: RetainedImage::from_color_image(
                 "plot.png",
-                get_value(draw_func(Path::new("/home/cyansky/Documents/rust/FunctionHandler/plot.png"))),
+                draw_func(Path::new("/home/cyansky/Documents/rust/FunctionHandler/plot.png")).unwrap(),
             ),
             function: String::from("2*x-1"),
             low: 0,
@@ -90,7 +91,7 @@ impl eframe::App for MyApp {
                     draw_func(Path::new("/home/cyansky/Documents/rust/FunctionHandler/plot.png"));
                     self.image = RetainedImage::from_color_image(
                         "plot.png",
-                        get_value(draw_func(Path::new("/home/cyansky/Documents/rust/FunctionHandler/plot.png"))),
+                        draw_func(Path::new("/home/cyansky/Documents/rust/FunctionHandler/plot.png")).unwrap(),
                     )
                 }
             });
@@ -180,158 +181,73 @@ fn draw_func(path: &std::path::Path) -> Result<egui::ColorImage, image::ImageErr
     ))
 }
 
+
+fn recursive_calcul(vec : &Vec<String>) -> f32{
+    if vec[0] != "("{
+        let result : &String = &vec[0];
+        return result.parse().unwrap();
+    }
+    let mut result : f32 = 0.0;
+    let operator:&str = &vec[1];
+    match operator {
+        "+" => {
+            result = recursive_calcul(vec[3..vec.len()/2]) + recursive_calcul(vec);
+        },
+        "-" => {
+            todo!()
+        },
+        "x" => {
+            todo!()
+        },
+        "/" => {
+            todo!()
+        },
+        _=>panic!("wrong operator {}", operator)
+    }
+    result
+}
+
 fn do_the_math(function : String, domaine_def : (i32, i32)) -> Vec<(f32, f32)> {
 
-    //slicing the function between values and calcul signs
+    let s_char : Vec<char> = expr(&function)
+        .to_string()
+        .chars()
+        .filter(|&c| !c.is_whitespace())
+        .collect();
+    let mut s:Vec<String> = s_char.iter().map(|&c| c.to_string()).collect();
+    
+    let mut res: Vec<(f32,f32)> = vec![];
+    let mut x_indexs: Vec<usize> = vec![];
+    let mut open_parenthesis_indexs: Vec<usize> = vec![];
 
-    let mut cur_str = "".to_owned();
-    let mut val : Vec<f64> = vec![];
-    let mut signs : Vec<char> = vec![];
-    let mut x_places : Vec<i32> = vec![];
-    let mut x = 0.0;
-    let mut i = 0;
-    for chr in function.chars(){
-        println!("{}", chr);
-        match chr as u32 {
-            42..=47 => {
-                val.push(get_value(cur_str.parse()));
-                signs.push(chr);
-                cur_str = "".to_owned();
-            },
-            48..=57 => {
-                cur_str += chr.to_string().as_str(); 
-                i+=1;}
-            94 => {val.push(get_value(cur_str.parse()));
-                signs.push(chr);
-                cur_str = "".to_owned();}
-            120 => {
-                cur_str += &x.to_string().as_str();
-                x_places.push(i);
-                i+=1;
+    let definition = 100;
+    for i in 0..s.len(){
+        if s[i] == "x"{
+            x_indexs.push(i);
+        }
+        else if s[i] == "("{
+            open_parenthesis_indexs.push(i);
+        }
+    }
+    
+    // calculate y for every x with the precision being (definition) 
+    //exemple : definition=1 x = 1, 2, 3, ... | definition=100 1, 1.01, 1.02, ...
+    
+    for i in (domaine_def.0 * definition)..=(domaine_def.1 * definition) {
+        for x in &x_indexs{
+            s[*x]=i.to_string();
+        }
+        for j in &open_parenthesis_indexs{
+            if s[*j+2] == "("{
+                todo!()
+            } else {
+                todo!()
             }
-            _ => println!("what the fuck is this shit ? : {}, char = {}", chr, chr as u32)
-        } if chr == function.chars().last().unwrap(){
-            val.push(get_value(cur_str.parse()));
         }
     }
 
     // once the function is sliced its processed
-
-    let mut equilibre_scaler : Vec<usize> = vec![];
-    let mut res : Vec<(f32, f32)> = vec![];
-    let backup_val = val.clone();
-    let backup_sign = signs.clone();
-    let mut equilibre:i32 = 1;
-    let mut current_adder: i32 = 0;
-    let mut iter = 0;
-    let mut val_len = val.len();
-    for i in (domaine_def.0 * 100)..=(domaine_def.1 * 100) {
-        signs = backup_sign.clone();
-        val = backup_val.clone();
-        for iter in 0..x_places.len() {
-            let x_index : usize = x_places[iter] as usize;
-            val[x_index] = i as f64;
-        }
-        println!("{:?}, {:?}, {:?}", &val, &signs, x_places);
-        equilibre = 1;
-        while iter < signs.len() {
-            println!("{}, {}", signs[iter], signs[iter] == '^');
-            if signs[iter] == '^' {
-                for i in equilibre_scaler.clone().into_iter(){
-                    if i < iter {current_adder-=1;}
-                }
-                for i_ in 1..(val[iter + equilibre as usize +current_adder as usize] as i32) {
-                    val[iter + equilibre as usize + current_adder as usize -1] *= val[iter + equilibre as usize -1];
-                }
-                equilibre_scaler.push(iter);
-                val.remove(iter+equilibre as usize);
-                val_len = val.len();
-                equilibre-=1;
-                println!("{:?}, {:?}, {:?} */", &val, &signs, x_places);
-            } 
-            iter +=1;
-            current_adder = 0;
-        }
-        iter =0;
-        while iter < signs.len() {
-            println!("{}, {}", signs[iter], signs[iter] == '*' || signs[iter] == '/');
-            if signs[iter] == '*' || signs[iter] == '/' {
-                println!("before : {:?}, {:?}, {:?} */", &val, &signs, x_places);
-                for i in equilibre_scaler.clone().into_iter(){
-                    if i < iter {current_adder-=1;}
-                }
-                if signs[iter] == '*' {
-                    if (iter as i32 + equilibre + current_adder -1) < 0 {
-                        val[0] *= val[1];
-                        val.remove(1);
-                    } else if (iter as i32 + equilibre + current_adder -1) < (val_len -1) as i32 {
-                        val[val_len-1] *= val[val_len-2];
-                        val.remove(val_len -1);
-                    } else {
-                        val[iter + equilibre as usize + current_adder as usize -1] *= val[iter + current_adder as usize + equilibre as usize];
-                    }
-                    val_len = val.len();
-                    equilibre-=1;
-                    
-                } else if signs[iter] == '/' {
-                    if (iter as i32 + equilibre + current_adder -1) < 0 {
-                        val[0] /= val[1];
-                        val.remove(1);
-                    } else if (iter as i32 + equilibre + current_adder -1) < (val_len -1) as i32 {
-                        val[val_len-1] /= val[val_len-2];
-                        val.remove(val_len -1);
-                    } else {
-                        val[iter + equilibre as usize + current_adder as usize -1] /= val[iter + current_adder as usize + equilibre as usize];
-                    }
-                    val_len = val.len();
-                    equilibre-=1;
-                    
-                }
-                println!("after : {:?}, {:?}, {:?} */", &val, &signs, x_places);
-            } 
-            iter +=1;
-        }
-        iter = 0;
-        while iter < signs.len() {
-            if signs[iter] == '+' || signs[iter] == '-' {
-                if signs[iter] == '+' {
-                    val[0] += val[1];
-                    val.remove(1);
-                    val_len = val.len();
-                    equilibre-=1;
-                } else if signs[iter] == '-' {
-                    val[0] -= val[1];
-                    val.remove(1);
-                    val_len = val.len();
-                    equilibre-=1;
-                }
-                println!("{:?}, {:?}, {:?} +-", &val, &signs, x_places);
-            }
-            iter+=1;
-            
-        }
-        iter = 0;
-        println!("result pour x = {} : {:?}",i, val);
-        
-        if val.len() > 0 {
-            if (val[0] as f64) == std::f64::INFINITY || (val[0] as f64) == std::f64::NEG_INFINITY{
-                println!("val for {} is out of scope", i);
-            } else {
-                let tuple = ((i as f32 /100.0) as f32, val[0] as f32);
-                res.push(tuple);
-            }
-        } else {
-            let tuple = ((i as f32 /100.0) as f32, 0.0 as f32);
-            res.push(tuple);
-        }
-    }
     println!("{:?}", res);
     return res;
 }
 
-fn get_value<T, E>(res : Result<T, E>) -> T {
-    match res {
-        Ok(r) => return r,
-        Err(e) => panic!("error")
-    }
-}
