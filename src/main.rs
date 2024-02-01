@@ -3,7 +3,7 @@
 use eframe::{egui, Error};
 use plotters::prelude::*;
 use core::panic;
-use std::path::Path;
+use std::{path::Path, vec};
 use egui::widgets::{TextEdit, DragValue};
 use egui_extras::RetainedImage;
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -181,73 +181,21 @@ fn draw_func(path: &std::path::Path) -> Result<egui::ColorImage, image::ImageErr
     ))
 }
 
-
-fn recursive_calcul(vec : &Vec<String>) -> f32{
-    if vec[0] != "("{
-        let result : &String = &vec[0];
-        return result.parse().unwrap();
-    }
-    let mut result : f32 = 0.0;
-    let operator:&str = &vec[1];
-    match operator {
-        "+" => {
-            result = recursive_calcul(vec[3..vec.len()/2]) + recursive_calcul(vec);
-        },
-        "-" => {
-            todo!()
-        },
-        "x" => {
-            todo!()
-        },
-        "/" => {
-            todo!()
-        },
-        _=>panic!("wrong operator {}", operator)
-    }
-    result
+fn rescursive_calcul(s:S, i:i32)->f32{
+    todo!()
 }
 
 fn do_the_math(function : String, domaine_def : (i32, i32)) -> Vec<(f32, f32)> {
 
-    let s_char : Vec<char> = expr(&function)
-        .to_string()
-        .chars()
-        .filter(|&c| !c.is_whitespace())
-        .collect();
-    let mut s:Vec<String> = s_char.iter().map(|&c| c.to_string()).collect();
-    
-    let mut res: Vec<(f32,f32)> = vec![];
-    let mut x_indexs: Vec<usize> = vec![];
-    let mut open_parenthesis_indexs: Vec<usize> = vec![];
-
+    let s = expr(&function);
+    let mut res: Vec<(f32, f32)> = vec![];
     let definition = 100;
-    for i in 0..s.len(){
-        if s[i] == "x"{
-            x_indexs.push(i);
-        }
-        else if s[i] == "("{
-            open_parenthesis_indexs.push(i);
-        }
-    }
-    
-    // calculate y for every x with the precision being (definition) 
-    //exemple : definition=1 x = 1, 2, 3, ... | definition=100 1, 1.01, 1.02, ...
-    
     for i in (domaine_def.0 * definition)..=(domaine_def.1 * definition) {
-        for x in &x_indexs{
-            s[*x]=i.to_string();
-        }
-        for j in &open_parenthesis_indexs{
-            if s[*j+2] == "("{
-                todo!()
-            } else {
-                todo!()
-            }
-        }
+        res.push((rescursive_calcul(s, i),i as f32));
     }
 
     // once the function is sliced its processed
-    println!("{:?}", res);
+    //println!("{:?}", res);
     return res;
 }
 
