@@ -180,6 +180,7 @@ fn do_the_math(function : String, domaine_def : (i32, i32)) -> Vec<(f32, f32)> {
         println!(" function : {}", transformed_function);
         let s = expr(&transformed_function);
         println!("{:?}", s);
+        println!(" s : {:?}", &s);
         let calcul_result = big_brain_calculator(s, (domaine_def.1 + 1) as u32);
         res.push((i as f32, calcul_result));
         println!("{:?}", res);

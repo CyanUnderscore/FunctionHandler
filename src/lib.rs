@@ -31,15 +31,28 @@ impl Lexer {
         let mut tokens: Vec<Token> = vec![];
         let mut buffer: Vec<char> = vec![];
         for i in 0..elements.len(){
-            if DIGITS.iter().any(|&x| x == elements[i]){
+            println!("index {i}");
+            println!("value {}", elements[i]);
+            if i < elements.len()-1{
+                if DIGITS.iter().any(|&x| x == elements[i]){
+                    buffer.push(elements[i]);
+                } else if buffer.len() != 0 {
+                    let buffer_result : String = buffer.iter().cloned().collect();
+                    buffer = vec![];
+                    tokens.push(Token::Atom(buffer_result));
+                    tokens.push(Token::Op(elements[i]))
+                }
+            }else if DIGITS.iter().any(|&x| x == elements[i]){
                 buffer.push(elements[i]);
-            } else if buffer.len() != 0 {
                 let buffer_result : String = buffer.iter().cloned().collect();
                 buffer = vec![];
                 tokens.push(Token::Atom(buffer_result));
+
+            }   else {
+                todo!()
             }
+            
         }
-        tokens.reverse();
         Lexer { tokens }
     }
 
@@ -94,7 +107,7 @@ fn expr_bp(lexer: &mut Lexer, min_bp: u8) -> S {
         lexer.next(); 
         let rhs = expr_bp(lexer, r_bp);
 
-        lhs = S::Cons(op, vec![lhs, rhs]); 
+        lhs = S::Cons(op, vec![rhs, lhs]); 
     }
 
     lhs
@@ -132,7 +145,7 @@ pub fn big_brain_calculator(s:S, limit:u32) -> f32{
                 '/' => return big_brain_calculator(vec[0].clone(), limit) / big_brain_calculator(vec[1].clone(), limit),
                 _ => panic!("unxepected operator {op}")
             }
-        }
+        } // (x, y)
 
     }
 }
@@ -143,6 +156,11 @@ mod test{
     fn it_works() {
         let result = 2 + 2;
         assert_eq!(result, 4);
+    }
+    #[test]
+    fn lexer(){
+        let mut lexer = Lexer::new("1+2*3");
+        assert_eq!(lexer.tokens, vec![Token::Atom("1".to_owned()), Token::Op('+'), Token::Atom("2".to_owned()), Token::Op('*'), Token::Atom("3".to_owned())])
     }
     #[test]
     fn expr_test() {
