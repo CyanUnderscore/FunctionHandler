@@ -1,11 +1,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
-
 use eframe::{egui, Error};
 use plotters::prelude::*;
 use std::path::Path;
 use egui::widgets::{TextEdit, DragValue};
 use egui_extras::RetainedImage;
+use FunctionHandler::{expr, replace_x_by, big_brain_calculator};
 pub type Result<T, E = Error> = std::result::Result<T, E>;
+
 
 fn main() -> Result<(), eframe::Error> {
     funcManager("".to_owned(), (0, 20));
@@ -97,18 +98,6 @@ impl eframe::App for MyApp {
             
         });
 
-        /*egui::Window::new("Self status")
-                .collapsible(false)
-                .resizable(false)
-                .show(ctx, |ui| {
-                    ui.horizontal(|ui| {
-                        for (title, info) in self.as_tuples() {
-                            let read : String = format!(" {} : {:?}", title, info);
-                            ui.label(read);
-                        }
-                });
-            });*/
-
         if self.show_confirmation_dialog {
             // Show confirmation dialog:
             egui::Window::new("Do you want to quit?")
@@ -182,115 +171,18 @@ fn draw_func(path: &std::path::Path) -> Result<egui::ColorImage, image::ImageErr
 
 fn do_the_math(function : String, domaine_def : (i32, i32)) -> Vec<(f32, f32)> {
 
-    //slicing the function between values and calcul signs
-
-    let mut cur_str = "".to_owned();
-    let mut val : Vec<f64> = vec![];
-    let mut signs : Vec<char> = vec![];
-    let mut x_places : Vec<i32> = vec![];
-    let mut x = 0.0;
-    let mut i = 0;
-    for chr in function.chars(){
-        println!("{}", chr);
-        match chr as u32 {
-            42..=47 => {
-                val.push(cur_str.parse().unwrap());
-                signs.push(chr);
-                cur_str = "".to_owned();
-            },
-            48..=57 => {
-                cur_str += chr.to_string().as_str(); 
-                i+=1;}
-            94 => {val.push(cur_str.parse().unwrap());
-                signs.push(chr);
-                cur_str = "".to_owned();}
-            120 => {
-                cur_str += &x.to_string().as_str();
-                x_places.push(i);
-                i+=1;
-            }
-            _ => println!("what the fuck is this shit ? : {}, char = {}", chr, chr as u32)
-        } if chr == function.chars().last().unwrap(){
-            val.push(cur_str.parse().unwrap());
-        }
-    }
-
-    // once the function is sliced its processed
-
-    let mut res : Vec<(f32, f32)> = vec![];
-    let backup_val = val.clone();
-    let backup_sign = signs.clone();
-    let mut equilibre:i32 = 1;
-    let mut iter = 0;
+    let mut res: Vec<(f32, f32)> = vec![];
     for i in domaine_def.0..=domaine_def.1 {
-        signs = backup_sign.clone();
-        val = backup_val.clone();
-        for iter in 0..x_places.len() {
-            let x_index : usize = x_places[iter] as usize;
-            val[x_index] = i as f64;
-        }
-        println!("{:?}, {:?}, {:?}", &val, &signs, x_places);
-        equilibre = 1;
-        while iter < signs.len() {
-            println!("{}, {}", signs[iter], signs[iter] == '*' || signs[iter] == '/');
-            if signs[iter] == '^' {
-                for i_ in 1..(val[iter + equilibre as usize] as i32) {
-                    val[iter + equilibre as usize -1] *= val[iter + equilibre as usize -1];
-                }
-                val.remove(iter+equilibre as usize);
-                equilibre-=1;
-                println!("{:?}, {:?}, {:?} */", &val, &signs, x_places);
-            } 
-            iter +=1;
-        }
-        iter =0;
-        while iter < signs.len() {
-            println!("{}, {}", signs[iter], signs[iter] == '*' || signs[iter] == '/');
-            if signs[iter] == '*' || signs[iter] == '/' {
-                if signs[iter] == '*' {
-                    val[iter + equilibre as usize -1] *= val[iter + equilibre as usize];
-                    val.remove(iter+equilibre as usize);
-                    equilibre-=1;
-                    
-                } else if signs[iter] == '/' {
-                    val[iter + equilibre as usize -1] /= val[iter + equilibre as usize];
-                        val.remove(iter+equilibre as usize);
-                        equilibre-=1;
-                }
-                println!("{:?}, {:?}, {:?} */", &val, &signs, x_places);
-            } 
-            iter +=1;
-        }
-        iter = 0;
-        while iter < signs.len() {
-            if signs[iter] == '+' || signs[iter] == '-' {
-                if signs[iter] == '+' {
-                    val[0] += val[1];
-                    val.remove(1);
-                    equilibre-=1;
-                } else if signs[iter] == '-' {
-                    val[0] -= val[1];
-                    val.remove(1);
-                    equilibre-=1;
-                }
-                println!("{:?}, {:?}, {:?} +-", &val, &signs, x_places);
-            }
-            iter+=1;
-            
-        }
-        iter = 0;
-        println!("result pour x = {} : {:?}",i, val);
-        
-        if val.len() > 0 {
-            if (val[0] as f64) == std::f64::INFINITY || (val[0] as f64) == std::f64::NEG_INFINITY{
-                println!("val for {} is out of scope", i);
-            } else {
-                let tuple = (i as f32, val[0] as f32);
-                res.push(tuple);
-            }
+        if function == String::from(""){
+            res.push((i as f32, 0.0))
         } else {
-            let tuple = (i as f32, 0.0 as f32);
-            res.push(tuple);
+            let transformed_function = replace_x_by(i, function.clone());
+        println!(" function : {}", transformed_function);
+        let s = expr(&transformed_function);
+        println!("{:?}", s);
+        let calcul_result = big_brain_calculator(s, (domaine_def.1 + 1) as u32);
+        res.push((i as f32, calcul_result));
+        println!("{:?}", res);
         }
     }
     println!("{:?}", res);
