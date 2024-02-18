@@ -15,7 +15,7 @@ fn main() -> Result<(), eframe::Error> {
         ..Default::default()
     };
     eframe::run_native(
-        "Confirm exit",
+        "Function tracer",
         options,
         Box::new(|_cc| Box::<MyApp>::default()),
     )

@@ -18,9 +18,11 @@ pub enum S {
     Cons(char, Vec<S>),
 }
 
+#[derive(Debug)]
 pub struct Lexer {
     tokens: Vec<Token>,
 }
+
 
 impl Lexer {
     fn new(input: &str) -> Lexer {
@@ -30,17 +32,35 @@ impl Lexer {
             .collect();
         let mut tokens: Vec<Token> = vec![];
         let mut buffer: Vec<char> = vec![];
+
+        let mut last_was_op = false;
+
         for i in 0..elements.len(){
-            println!("index {i}");
-            println!("value {}", elements[i]);
+            println!("value={} index={i}", elements[i]);
             if i < elements.len()-1{
                 if DIGITS.iter().any(|&x| x == elements[i]){
                     buffer.push(elements[i]);
-                } else if buffer.len() != 0 {
-                    let buffer_result : String = buffer.iter().cloned().collect();
-                    buffer = vec![];
-                    tokens.push(Token::Atom(buffer_result));
-                    tokens.push(Token::Op(elements[i]))
+                    last_was_op= false;
+                
+                }else if( 
+                    i==0 && elements[i]=='-' || //if the first element is a -
+                    last_was_op && elements[i]=='-' || //if the element following an operator is -
+                    elements[i] == '.' && !buffer.iter().any(|&x| x == '.')  // if the element is . and is'nt already in the buffer (bcuz you can't have 2 . in a f32)
+                )   {
+                    buffer.push(elements[i]);
+
+                } else {
+                    if buffer.len() != 0 {
+                        let buffer_result : String = buffer.iter().cloned().collect();
+                        buffer = vec![];
+                        tokens.push(Token::Atom(buffer_result));
+                    }
+
+                    tokens.push(Token::Op(elements[i]));
+                    //if elements[i]!='(' && elements[i]!=')'{
+                    //    last_was_op = true;
+                    //}
+                    last_was_op = true
                 }
             }else if DIGITS.iter().any(|&x| x == elements[i]){
                 buffer.push(elements[i]);
@@ -49,10 +69,12 @@ impl Lexer {
                 tokens.push(Token::Atom(buffer_result));
 
             }   else {
-                todo!()
+                tokens.push(Token::Op(elements[i]));
+                last_was_op = true;
             }
             
         }
+        tokens.reverse();
         Lexer { tokens }
     }
 
@@ -83,12 +105,18 @@ impl fmt::Display for S {
 
 pub fn expr(input: &str) -> S {
     let mut lexer = Lexer::new(input);
+    println!("{:?}", lexer);
     expr_bp(&mut lexer, 0)
 }
 
 fn expr_bp(lexer: &mut Lexer, min_bp: u8) -> S { 
     let mut lhs = match lexer.next() {
         Token::Atom(it) => S::Atom(it),
+        Token::Op('(') => {
+            let lhs = expr_bp(lexer, 0);
+            assert_eq!(lexer.next(), Token::Op(')'));
+            lhs
+        },
         t => panic!("bad token: {:?}", t),
     };
 
@@ -99,26 +127,37 @@ fn expr_bp(lexer: &mut Lexer, min_bp: u8) -> S {
             t => panic!("bad token: {:?}", t),
         };
 
-        let (l_bp, r_bp) = infix_binding_power(op);
-        if l_bp < min_bp { 
-            break;
+        if let Some((l_bp, r_bp)) = infix_binding_power(op) {
+            if l_bp < min_bp {
+                break;
+            }
+
+            lexer.next();
+
+            lhs = if op == '?' {
+                let mhs = expr_bp(lexer, 0);
+                assert_eq!(lexer.next(), Token::Op(':'));
+                let rhs = expr_bp(lexer, r_bp);
+                S::Cons(op, vec![lhs, mhs, rhs])
+            } else {
+                let rhs = expr_bp(lexer, r_bp);
+                S::Cons(op, vec![lhs, rhs])
+            };
+            continue;
         }
-
-        lexer.next(); 
-        let rhs = expr_bp(lexer, r_bp);
-
-        lhs = S::Cons(op, vec![rhs, lhs]); 
+        break;
     }
 
     lhs
 }
 
-fn infix_binding_power(op: char) -> (u8, u8) {
-    match op {
+fn infix_binding_power(op: char) -> Option<(u8, u8)> {
+    let res = match op {
         '+' | '-' => (1, 2),
         '*' | '/' => (3, 4),
-        _ => panic!("bad op: {:?}", op),
-    }
+        _ => return None,
+    };
+    Some(res)
 }        
 
 pub fn replace_x_by(x_value:i32, function:String)->String{
