@@ -4,7 +4,7 @@ use plotters::prelude::*;
 use std::path::Path;
 use egui::widgets::{TextEdit, DragValue};
 use egui_extras::RetainedImage;
-use FunctionHandler::{expr, replace_x_by, big_brain_calculator};
+use FunctionHandler::{expr, replace_x_by, big_brain_calculator, split_the_lines};
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 
@@ -121,7 +121,7 @@ impl eframe::App for MyApp {
 
 fn funcManager(function : String, domaine_def : (i32, i32)) -> Result<String, Box<dyn std::error::Error>> {
 
-    let line = do_the_math(function, domaine_def);
+    let (line, skips) = do_the_math(function, domaine_def);
     let mut min:f32 = 0.0;
     let mut max:f32 = 0.0;
     for i in &line{
@@ -147,11 +147,17 @@ fn funcManager(function : String, domaine_def : (i32, i32)) -> Result<String, Bo
         .x_labels(5)
         .y_labels(5)
         .draw()?;
+    println!("line : {:?}, skips : {:?}", line, skips);
+    let lines = split_the_lines(line, skips);
+    println!("line len : {}, content : {:?}", lines.len(), lines);
+    for line in lines{
+        chart.draw_series(LineSeries::new(
+            line,
+            &RED,
+        ))?;
+    }
+    
 
-    chart.draw_series(LineSeries::new(
-        line,
-        &RED,
-    ))?;
 
     Ok(path.to_owned())
 }
@@ -169,8 +175,8 @@ fn draw_func(path: &std::path::Path) -> Result<egui::ColorImage, image::ImageErr
     ))
 }
 
-fn do_the_math(function : String, domaine_def : (i32, i32)) -> Vec<(f32, f32)> {
-
+fn do_the_math(function : String, domaine_def : (i32, i32)) -> (Vec<(f32, f32)>, Vec<(f32)>) {
+    let mut skips: Vec<f32> = vec![];
     let mut res: Vec<(f32, f32)> = vec![];
     for i in domaine_def.0..=domaine_def.1 {
         if function == String::from(""){
@@ -181,12 +187,17 @@ fn do_the_math(function : String, domaine_def : (i32, i32)) -> Vec<(f32, f32)> {
         let s = expr(&transformed_function);
         println!("{:?}", s);
         println!(" s : {:?}", &s);
-        let calcul_result = big_brain_calculator(s, (domaine_def.1 + 1) as u32);
-        res.push((i as f32, calcul_result));
+        match big_brain_calculator(s, (domaine_def.1 + 1) as u32){
+            Ok(calcul_result) => res.push((i as f32, calcul_result)),
+            Err(b) => {
+                res.push((i as f32, 0.0));
+                skips.push(i as f32);
+            }
+        }
         println!("{:?}", res);
         }
     }
     println!("{:?}", res);
-    return res;
+    return (res, skips);
 }
 

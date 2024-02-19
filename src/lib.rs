@@ -5,6 +5,8 @@ pub fn add(left: usize, right: usize) -> usize {
 }
 use std::fmt;
 
+use eframe::egui::plot::Line;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Token {
     Atom(String),
@@ -172,22 +174,51 @@ pub fn replace_x_by(x_value:i32, function:String)->String{
     return String::from(result.concat());
 }
 
-pub fn big_brain_calculator(s:S, limit:u32) -> f32{
+pub fn big_brain_calculator(s:S, limit:u32) -> Result<f32, bool>{
     match s {
         S::Atom(val) => {
             println!("{val}");
-            return val.parse::<f32>().unwrap();},
+            return Ok(val.parse::<f32>().unwrap());},
         S::Cons(op, vec) => {match op{
-                '+' => return big_brain_calculator(vec[0].clone(), limit) + big_brain_calculator(vec[1].clone(), limit),
-                '-' => return big_brain_calculator(vec[0].clone(), limit) - big_brain_calculator(vec[1].clone(), limit),
-                '*' => return big_brain_calculator(vec[0].clone(), limit) * big_brain_calculator(vec[1].clone(), limit),
-                '/' => return big_brain_calculator(vec[0].clone(), limit) / big_brain_calculator(vec[1].clone(), limit),
+                '+' => return Ok(big_brain_calculator(vec[0].clone(), limit).unwrap() + big_brain_calculator(vec[1].clone(), limit).unwrap()),
+                '-' => return Ok(big_brain_calculator(vec[0].clone(), limit).unwrap() - big_brain_calculator(vec[1].clone(), limit).unwrap()),
+                '*' => return Ok(big_brain_calculator(vec[0].clone(), limit).unwrap() * big_brain_calculator(vec[1].clone(), limit).unwrap()),
+                '/' => {
+                    if big_brain_calculator(vec[1].clone(), limit).unwrap()==0.0 {
+                        return Err(true);
+                    } else {
+                        return Ok(big_brain_calculator(vec[0].clone(), limit).unwrap() / big_brain_calculator(vec[1].clone(), limit).unwrap());
+                    }
+                },
                 _ => panic!("unxepected operator {op}")
             }
         } // (x, y)
 
     }
 }
+
+pub fn split_the_lines(mut line:Vec<(f32, f32)>, skips:Vec<f32>)->Vec<Vec<(f32, f32)>>{
+    if skips.len()==0{
+        return vec![line];
+    }
+
+    let mut lines:Vec<Vec<(f32, f32)>> = vec![];
+    for i in 0..skips.len(){
+        for j in 0..line.len(){
+            if skips[i]==line[j].0{
+                lines.push(line[0..j].to_vec());
+                line.drain(0..=j);
+                break;
+            }
+        }
+    }
+    if line.len()>0{
+        lines.push(line);
+    }
+    return lines;
+}
+
+
 #[cfg(test)]
 mod test{
     use super::*;
@@ -199,7 +230,7 @@ mod test{
     #[test]
     fn lexer(){
         let mut lexer = Lexer::new("1+2*3");
-        assert_eq!(lexer.tokens, vec![Token::Atom("1".to_owned()), Token::Op('+'), Token::Atom("2".to_owned()), Token::Op('*'), Token::Atom("3".to_owned())])
+        assert_eq!(lexer.tokens, vec![Token::Atom("3".to_owned()), Token::Op('*'), Token::Atom("2".to_owned()), Token::Op('+'), Token::Atom("1".to_owned())])
     }
     #[test]
     fn expr_test() {
@@ -207,6 +238,13 @@ mod test{
         let s = expr("1 + 2 * 3");
         println!("{:?}",s);
         assert_eq!(s.to_string(), "(+ 1 (* 2 3))")
+    }
+    #[test]
+    fn line_slicing(){
+        let line = vec![(-2.0, 1.0), (-1.0, 2.0), (0.0, 3.0), (1.0, 6.0), (2.0, 1.0), (3.0, 8.0), (4.0, 1.0), (5.0, 7.0), (6.0, 1.0)];
+        let skips = vec![-1.0, 3.0];
+        let lines = split_the_lines(line, skips);
+        assert_eq!(lines, vec![vec![(-2.0, 1.0)], vec![(0.0, 3.0), (1.0, 6.0), (2.0, 1.0)], vec![(4.0, 1.0), (5.0, 7.0), (6.0, 1.0)]])
     }
     #[test]
     fn replace_x() {
